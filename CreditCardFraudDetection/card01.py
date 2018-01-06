@@ -4,10 +4,10 @@
 import numpy as np
 import pandas as pd
 import datetime
-
+import matplotlib
+matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
-
 import seaborn as sns
 sns.set_style('whitegrid')
 import missingno as msno
@@ -16,19 +16,19 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import GridSearchCV
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import confusion_matrix, classification_report
+from sklearn.metrics import confusion_matrix
 from sklearn.metrics import precision_recall_curve
 from sklearn.metrics import auc
 from sklearn.metrics import roc_auc_score
 from sklearn.metrics import  roc_curve
 from sklearn.metrics import  recall_score
+from sklearn.metrics import classification_report
 from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import StandardScaler
 
-
 import warnings
-warnings.filterwarnings("ignore", category=DeprecationWarning)
 warnings.filterwarnings('ignore')
+warnings.simplefilter("ignore")
 
 pd.set_option('display.float_format', lambda  x: '%.4f' % x)
 
@@ -47,8 +47,11 @@ print msno.matrix(data_cr) # 查看数据缺失值情况
 
 # -----------------END-------------------------------------------------------
 
+print "No.1---数据预处理阶段结束。"
+
 
 # ----------------特征工程-----------------------------------------------------
+# 目标变量分布可视化
 fig, axs = plt.subplots(1, 2, figsize=(14, 7))
 sns.countplot(x='Class', data=data_cr, ax=axs[0])
 axs[0].set_title("Frequency of each Class")
@@ -56,8 +59,10 @@ data_cr['Class'].value_counts().plot(x=None,y=None,kind='pie',ax=axs[1],autopct=
 axs[1].set_title("Percentage of each Class")
 plt.show()
 
-print data_cr.groupby('Class').size()   # 查看0和1对应的数据集的大小
+print data_cr.groupby('Class').size()   # 查看目标列的情况
 # ------------------END--------------------------------------------------------
+
+
 
 # ----------------特征衍生-------------------------------------------------------
 # 特征Time的单为秒，我们将其转化为以小时为单位对应每天的时间。
@@ -124,7 +129,7 @@ ax2.set_title('Normal')
 
 plt.xlabel('Time(in Hours')
 plt.ylabel('Amount')
-plt.show()
+
 
 print ("Fraud Stats Summary")
 print (data_cr["Amount"][data_cr["Class"] == 1].describe())
@@ -137,7 +142,7 @@ print (data_cr["Amount"][data_cr["Class"] == 0].describe())
 # 同时，信用卡发生被盗刷的最大值也就只有2,125.87美元。
 
 
-# Select only the anonymized features
+# 选择特征变量（我们将选择在不同信用卡状态下的分布有明显区别的变量）
 v_feat = data_cr.ix[:, 1:29].columns
 plt.figure(figsize=(160, 112))
 gs = gridspec.GridSpec(28, 1)
@@ -191,12 +196,14 @@ plt.rcParams['figure.figsize'] = (12, 6)
 importances = clf.feature_importances_
 feat_names = names
 indices = np.argsort(importances)[::-1]
-fig = plt.figure(figsize=(20,6))
+fig = plt.figure(figsize=(20, 6))
 plt.title("Feature importances by RandomTreeClassifier")
-plt.bar(range(len(indices)), importances[indices], color='lightblue', align="center")
+plt.bar(range(len(indices)), importances[indices], color='lightblue',  align="center")
 plt.step(range(len(indices)), np.cumsum(importances[indices]), where='mid', label='Cumulative')
-plt.xticks(range(len(indices)), feat_names[indices], rotation='vertical',fontsize=14)
+plt.xticks(range(len(indices)), feat_names[indices], rotation='vertical', fontsize=14)
 plt.xlim([-1, len(indices)])
+# -----------------------END---------------------------------------------------------------
+
 
 
 
@@ -211,15 +218,13 @@ y = data_cr["Class"]
 n_sample = y.shape[0]
 n_pos_sample = y[y == 0].shape[0]
 n_neg_sample = y[y == 1].shape[0]
-print('样本个数：{}; 正样本占{:.2%}; 负样本占{:.2%}'.format(n_sample,
-                                                   n_pos_sample / n_sample,
-                                                   n_neg_sample / n_sample))
-print('特征维数：', X.shape[1])
+print '样本个数：',n_sample
+print '正样本占：',n_pos_sample/float(n_sample)
+print '负样本占：',n_neg_sample/float(n_sample)
+print '特征维数：', X.shape[1]
+
 
 # 打印结果 ：284807 正样本占：99.83% 负样本占： 0.17%  特征维数：18
-
-
-
 
 from imblearn.over_sampling import SMOTE # 导入SMOTE算法模块
 # 处理不平衡数据
@@ -229,53 +234,55 @@ print('通过SMOTE方法平衡正负样本后')
 n_sample = y.shape[0]
 n_pos_sample = y[y == 0].shape[0]
 n_neg_sample = y[y == 1].shape[0]
-print('样本个数：{}; 正样本占{:.2%}; 负样本占{:.2%}'.format(n_sample,
-                                                   n_pos_sample / n_sample,
-                                                   n_neg_sample / n_sample))
+print '样本个数：',n_sample
+print '正样本占：',n_pos_sample/float(n_sample)
+print '负样本占：',n_neg_sample/float(n_sample)
+print '特征维数：', X.shape[1]
 
-### !!! 这里的正负样本的数目不太对 #####
+
+
 
 # ---------构建分类器进行训练---------------------------------------------------------------------
 
 from sklearn.linear_model import LogisticRegression
 clf1 = LogisticRegression() # 构建逻辑回归分类器
-clf1.fit(X,y)
-
-
-predicted1 = clf.predict(X)  # 通过分类器产生预测结果
+clf1.fit(X, y)
+predicted1 = clf.predict(X) # 通过分类器产生预测结果
 print("Test set accuracy score: {:.5f}".format(accuracy_score(predicted1, y,)))
+# Test set accuracy score: 0.90153
 
 
-def plot_confusion_matrix(cm, classes, title='Confusion matrix', camap=plt.cm.Blues):
+# 绘制混淆矩阵
+def plot_confusion_matrix(cm, classes,
+                          title='Confusion matrix',
+                          cmap=plt.cm.Blues):
     """
     This function prints and plots the confusion matrix.
-    :param cm:
-    :param classes:
-    :param title:
-    :param camap:
-    :return:
     """
     plt.imshow(cm, interpolation='nearest', cmap=cmap)
     plt.title(title)
     plt.colorbar()
     tick_marks = np.arange(len(classes))
     plt.xticks(tick_marks, classes, rotation=0)
-    plt.yticks(tick_marks,classes)
+    plt.yticks(tick_marks, classes)
 
-    thresh = cm.max() / 2
+    thresh = cm.max() / 2.
     for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
-        plt.text(j,i,cm[i,j],
+        plt.text(j, i, cm[i, j],
                  horizontalalignment="center",
                  color="white" if cm[i, j] > thresh else "black")
-        plt.tight_layout()
-        plt.ylabel('True label')
-        plt.xlabel('Predicted label')
+
+    plt.tight_layout()
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label')
+    ##################################################################################
 
 
 # Compute confusion matrix
-cnf_matrix = confusion_matrix(y, predicted1) # 生成混淆矩阵
+cnf_matrix = confusion_matrix(y, predicted1)  # 生成混淆矩阵
 np.set_printoptions(precision=2)
-print("Recall metric in the testing dataset: ", cnf_matrix[1,1]/(cnf_matrix[1,0]+cnf_matrix[1,1]))
+
+print("Recall metric in the testing dataset: ", float(cnf_matrix[1,1])/(cnf_matrix[1,0]+cnf_matrix[1,1]))
 
 # Plot non-normalized confusion matrix
 class_names = [0,1]
@@ -284,6 +291,7 @@ plot_confusion_matrix(cnf_matrix
                       , classes=class_names
                       , title='Confusion matrix')
 plt.show()
+
 
 
 y_pred1_prob = clf1.predict_proba(X)[:, 1]  # 阈值默认值为0.5
@@ -303,90 +311,96 @@ plt.xlabel('False Positive Rate')
 plt.show()
 
 
-# Step 5  模型评估与优化 ----------------------------------------------------------
 
-# 一般来说，将数据集划分为训练集和测试集有3种处理方法：1、留出法（hold-out），2、交叉验证法（cross-validation），3、自助法（bootstrapping）
-# 本次项目采用的是交叉验证法划分数据集，将数据划分为3部分：训练集（training set）、验证集（validation set）和测试集（test set）。
-# 让模型在训练集进行学习，在验证集上进行参数调优，最后使用测试集数据评估模型的性能。
+# -------------Step 5 模型评估与优化 --------------------------------------------------------------
 
-# cross-validation + grid search
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=0)  # random_state = 0 每次切分的数据都一样
+# 本次项目采用的是交叉验证法划分数据集，将数据划分为3部分：训练集（training set）、验证集（validation set）和测试集（test set）。让模型在训练集进行学习，在验证集上进行参数调优，最后使用测试集数据评估模型的性能。
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.3, random_state = 0) # random_state = 0 每次切分的数据都一样
 # 构建参数组合
-param_grid = {'C' : [0.01,0.1, 1,10, 100, 1000,],
-              'penalty': ['l1', 'l2']}
+param_grid = {'C': [0.01,0.1, 1, 10, 100, 1000,],
+                            'penalty': [ 'l1', 'l2']}
 
-grid_search = GridSearchCV(LogisticRegression(), param_grid, cv=10) # 确定模型LogisticRegression 参数组合param_gird cv指定10折
-grid_search.fit(X_train, y_train) # 使用训练集数据算法
-
+grid_search = GridSearchCV(LogisticRegression(),  param_grid, cv=10) # 确定模型LogisticRegression，和参数组合param_grid ，cv指定10折
+grid_search.fit(X_train, y_train) # 使用训练集学习算法
 results = pd.DataFrame(grid_search.cv_results_)
 best = np.argmax(results.mean_test_score.values)
 print("Best parameters: {}".format(grid_search.best_params_))
 print("Best cross-validation score: {:.5f}".format(grid_search.best_score_))
+
 y_pred = grid_search.predict(X_test)
-print("Test set accuarcy score: {:5f}".format(accuracy_score(y_test,y_pred,)))
+print("Test set accuracy score: {:.5f}".format(accuracy_score(y_test, y_pred,)))
+
 print(classification_report(y_test, y_pred))
 
-print("Best parameters: {}".format(grid_search.best_params_))
-print("Best cross-validation score: {:.5f}".format(grid_search.best_score_))
-
-# 对混淆矩阵可视化
 # Compute confusion matrix
-cnf_matrix = confusion_matrix(y_test, y_pred) # 生成混淆矩阵
+cnf_matrix = confusion_matrix(y_test, y_pred)  # 生成混淆矩阵
 np.set_printoptions(precision=2)
 
-print("Recall metrix in the testing dataset: ", cnf_matrix[1,1]/(cnf_matrix[1,0]+cnf_matrix[1,1]))
+print("Recall metric in the testing dataset: ", float(cnf_matrix[1,1])/(cnf_matrix[1,0]+cnf_matrix[1,1]))
 
 # Plot non-normalized confusion matrix
 class_names = [0,1]
 plt.figure()
 plot_confusion_matrix(cnf_matrix
-                      ,classes=class_names
-                      ,title='Confusion matrix')
+                      , classes=class_names
+                      , title='Confusion matrix')
 plt.show()
 
 
 
-## 模型评估
-y_pred_proba = grid_search.predict_proba(X_test) # predict_prob获得一个概率值
-thresholds = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9] # 设定不同的阈值
-plt.figure(figsize=(15,10))
+
+y_pred_proba = grid_search.predict_proba(X_test)  # predict_prob 获得一个概率值
+
+thresholds = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]  # 设定不同阈值
+
+plt.figure(figsize=(15, 10))
 
 j = 1
 for i in thresholds:
-    y_test_predictions_high_recall = y_pred_proba[:,1] > i # 预测出来的概率值是否大于阈值
-    plt.subplot(3,3,j)
+    y_test_predictions_high_recall = y_pred_proba[:, 1] > i  # 预测出来的概率值是否大于阈值
+
+    plt.subplot(3, 3, j)
     j += 1
 
     # Compute confusion matrix
     cnf_matrix = confusion_matrix(y_test, y_test_predictions_high_recall)
     np.set_printoptions(precision=2)
 
-    print("Recall metrix in the testing dataset: ", cnf_matrix[1,1]/(cnf_matrix[1,0] + cnf_matrix[1,1]))
+    print("Recall metric in the testing dataset: ", float(cnf_matrix[1, 1]) / (cnf_matrix[1, 0] + cnf_matrix[1, 1]))
 
     # Plot non-normalized confusion matrix
-    class_names = [0,1]
+    class_names = [0, 1]
     plot_confusion_matrix(cnf_matrix
-                          ,classes=class_names
-                          ,title='Confusion matrix')
+                          , classes=class_names, title='Predicted label >= %s'%((j-1)/float(10)))
+
 
 
 
 from itertools import cycle
 
 thresholds = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
-colors = cycle(['navy', 'turquoise', 'darkorange', 'cornflowerblue', 'teal', 'red',  'yellow', 'green', 'blue','black'])
-plt.figure(figsize=(12,7))
+colors = cycle(['navy', 'turquoise', 'darkorange', 'cornflowerblue', 'teal', 'red', 'yellow', 'green', 'blue', 'black'])
+
+plt.figure(figsize=(12, 7))
 
 j = 1
-for i,color in zip(thresholds, colors):
-    y_test_predictions_prob = y_pred_proba[:,1] > i # 预测出来的概率值是否大于阈值
+for i, color in zip(thresholds, colors):
+    y_test_predictions_prob = y_pred_proba[:, 1] > i  # 预测出来的概率值是否大于阈值
+
     precision, recall, thresholds = precision_recall_curve(y_test, y_test_predictions_prob)
     area = auc(recall, precision)
 
-    # Plot Presion-Recall curve
+    # Plot Precision-Recall curve
+    plt.plot(recall, precision, color=color,
+             label='Threshold: %s, AUC=%0.5f' % (i, area))
     plt.xlabel('Recall')
     plt.ylabel('Precision')
     plt.ylim([0.0, 1.05])
     plt.xlim([0.0, 1.0])
     plt.title('Precision-Recall Curve')
     plt.legend(loc="lower left")
+
+plt.show()
+
+
+
